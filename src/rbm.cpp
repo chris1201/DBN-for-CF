@@ -12,7 +12,7 @@ float Rbm::weightDecay = 0.0001;
 float Rbm::momentum = 0.5;
 int Rbm::T = 1;
 
-Rbm::Rbm(const RbmData& data, int nHidden) 
+Rbm::Rbm(const RbmData& data, int nHidden)
         : nHidden(nHidden), nClasses(data.nClasses)
 {
     W.setRandom(data.nMovies * nClasses, nHidden);
@@ -41,7 +41,7 @@ void Rbm::initVisibleBias(const RbmData& data) {
         for (int c = 0; c < nClasses; c++) {
             if (vBias(m * nClasses + c) != 0) {
                 vBias(m * nClasses + c) /= totals(m);
-                vBias(m * nClasses + c) = 
+                vBias(m * nClasses + c) =
                     log(vBias(m * nClasses + c));
             }
         }
@@ -54,7 +54,7 @@ void Rbm::performEpoch(const RbmData& data) {
 
 void Rbm::performEpoch(const RbmData& data, int userStart, int userEnd) {
     vector<int> randomizedIds(userEnd - userStart, 0);
-    for (int i = userStart; i < userEnd; i++) 
+    for (int i = userStart; i < userEnd; i++)
         randomizedIds[i - userStart] = i;
     random_shuffle(randomizedIds.begin(), randomizedIds.end());
 
@@ -62,21 +62,21 @@ void Rbm::performEpoch(const RbmData& data, int userStart, int userEnd) {
         int rangeStart = data.range(randomizedIds[i]);
         int rangeEnd = data.range(randomizedIds[i] + 1); // end is exclusive
         int rangeLength = rangeEnd - rangeStart;
-        
+
         selectWeights(data, rangeStart, rangeEnd);
         const auto& visData = data.ratings.segment(rangeStart, rangeLength);
 
         h0probs = 1 / (1 + (-visData*Wsel - hBias).array().exp());
-        h0states = h0probs.array() > 
+        h0states = h0probs.array() >
             (h0probs.Random(h0probs.size()).array() + 1) / 2;
         negActivation(h0states.cast<float>());
-
+        //cout<<"negData\n"<<negData;
         hTProbs = 1 / (1 + (-negData*Wsel - hBias).array().exp());
         for (int t = 1; t < T; t++)
             gibbsSample();
 
         posProds.noalias() = visData.transpose() * h0probs;
-        negProds.noalias() = negData.transpose() * hTProbs; 
+        negProds.noalias() = negData.transpose() * hTProbs;
 
         if (i > 0)
             applyMomentum(data, randomizedIds[i - 1]);
@@ -89,7 +89,7 @@ void Rbm::performEpoch(const RbmData& data, int userStart, int userEnd) {
 
         Wmomentum.noalias() = posProds - negProds;
         for (int r = 0; r < rangeLength; r++)
-            W.row(data.movies(r + rangeStart)).noalias() += 
+            W.row(data.movies(r + rangeStart)).noalias() +=
                 WlearnRate * (Wmomentum.row(r) - weightDecay*Wsel.row(r));
     }
 }
@@ -99,7 +99,7 @@ void Rbm::negActivation(const RowVectorXf& h0states) {
 }
 
 void Rbm::gibbsSample() {
-    h0states = 
+    h0states =
         hTProbs.array() > (hTProbs.Random(hTProbs.size()).array() + 1) / 2;
     negActivation(h0states.cast<float>());
     hTProbs = 1 / (1 + (-negData*Wsel - hBias).array().exp());
@@ -143,7 +143,7 @@ void Rbm::applyMomentum(const RbmData& data, int user) {
         vBias(data.movies(r)) += momentum * vBiasMomentum(r - rangeStart);
 
     for (int r = 0; r < rangeLength; r++) {
-        W.row(data.movies(r + rangeStart)).noalias() += 
+        W.row(data.movies(r + rangeStart)).noalias() +=
             momentum * Wmomentum.row(r);
     }
 }
@@ -170,7 +170,7 @@ double Rbm::predict(const RbmData& data, const RbmPredictData& predictData,
         int rangeStart = data.range(userId);
         int rangeEnd = data.range(userId + 1); // end is exclusive
         selectWeights(data, rangeStart, rangeEnd);
-        const auto& visData = 
+        const auto& visData =
             data.ratings.segment(rangeStart, rangeEnd - rangeStart);
         h0probs = 1 / (1 + (-visData*Wsel - hBias).array().exp());
 
@@ -178,7 +178,7 @@ double Rbm::predict(const RbmData& data, const RbmPredictData& predictData,
         rangeEnd = predictData.range(i + 1);
         selectWeights(predictData, rangeStart, rangeEnd);
         normalizedNegActivation(h0probs);
-        const auto& actualData = 
+        const auto& actualData =
             predictData.ratings.segment(rangeStart, rangeEnd - rangeStart);
 
         for (int r = 0; r < actualData.size(); r += nClasses) {

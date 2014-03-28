@@ -10,8 +10,9 @@ class Srbm
 public:
     Srbm(const MatrixXi& data, int nHidden, int nVisible);
     void init(const MatrixXi& data, int nHidden, int nVisible);
-    void train(const MatrixXi& data, float Wlr, float HBiaslr, float Vbiaslr);
+    void train(MatrixXi data, float Wlr, float HBiaslr, float Vbiaslr);
     void expandBias(int n);
+    void negActivation(MatrixXf h0states);
     MatrixXf W;
     RowVectorXf hBias, vBias;
     MatrixXf hBias_use, vBias_use;
@@ -21,6 +22,6 @@ public:
 
 private:
     MatrixXf h0probs, hTProbs;
-    MatrixXi h0states, negData;
+    MatrixXf h0states, negData;
     MatrixXf posProds, negProds;
 };

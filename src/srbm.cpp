@@ -29,9 +29,28 @@ void Srbm::expandBias(int n)
         vBias_use.row(i)=vBias;
     }
 }
-void Srbm::train(const MatrixXi& data, float Wlr, float HBiaslr, float Vbiaslr)
+void Srbm::train(MatrixXi data, float Wlr, float HBiaslr, float Vbiaslr)
 {
+    MatrixXf X=data.cast<float>();
+    MatrixXf visData=X;
     int nSample=data.rows();
     expandBias(nSample);
-    cout<<"hBias_use\n"<<hBias_use<<'\n'<<"vBias_use\n"<<vBias_use<<endl;
+    h0probs = 1 / (1 + (-X*W - hBias_use).array().exp());
+
+    h0states = (h0probs.array() >
+    (h0probs.Random(h0probs.rows(),h0probs.cols()).array() + 1) / 2).cast<float>();
+    negActivation(h0states);
+    hTProbs = 1 / (1 + (-negData*W - hBias_use).array().exp());
+
+    posProds.noalias() = visData.transpose() * h0probs;
+    negProds.noalias() = negData.transpose() * hTProbs;
+    W+=Wlr*(posProds - negProds);
+    cout<<"posProds\n"<<posProds<<"\nnegProds\n"<<negProds<<endl;
+    cout<<"negData\n"<<negData<<endl;
+}
+void Srbm::negActivation(MatrixXf h0states)
+{
+    negData=1/(1+(-h0states*W.transpose()-vBias_use).array().exp());
+    //negData=
+    //negData.array() = negData.array().exp();
 }
